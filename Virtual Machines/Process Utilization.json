@@ -1,0 +1,321 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "0c366a64-d4b0-4fb5-8760-bf0f9426dfb3",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 1800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                }
+              ]
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "d48fbc20-cd33-47fd-bbc9-17bcae6d0a56",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscription",
+            "type": 6,
+            "isRequired": true,
+            "value": null,
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": true,
+              "showDefault": false
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "735f8026-ddcd-4c3e-b2bf-b8c9be346631",
+            "version": "KqlParameterItem/1.0",
+            "name": "Workspace",
+            "type": 5,
+            "isRequired": true,
+            "query": "Resources\r\n| where type =~ \"microsoft.operationalinsights/workspaces\"\r\n| join kind = inner (\r\n\tresourcecontainers\r\n\t| where type == \"microsoft.resources/subscriptions\"\r\n) on $left.subscriptionId == $right.subscriptionId\r\n| project id, label = name, group = name1\r\n| order by group asc, label asc",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "value": null,
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "showDefault": false
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          {
+            "id": "9a990d28-7463-4bc5-b258-fee65feeff4b",
+            "version": "KqlParameterItem/1.0",
+            "name": "Device",
+            "type": 2,
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "Heartbeat\r\n| distinct Computer\r\n| sort by Computer asc",
+            "crossComponentResources": [
+              "{Workspace}"
+            ],
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::10",
+                "value::all"
+              ],
+              "showDefault": false
+            },
+            "timeContext": {
+              "durationMs": 0
+            },
+            "timeContextFromParameter": "TimeRange",
+            "defaultValue": "value::10",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters - 0"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "# How to use this Workbook\r\n\r\nSelect the parameters to identify a collection of devices.\r\n\r\nOn the first chart, use Time brushing to select a range and the legend on the right to select a single device"
+      },
+      "name": "text - 3"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "# Processor Utilization by Computer"
+      },
+      "name": "text - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let binSize = case(\r\n    {TimeRange:seconds} > 86400, 10m,\r\n    {TimeRange:seconds} > 3600, 5m,\r\n    1m\r\n);\r\nPerf\r\n| where Computer in ({Device})\r\n| where ObjectName == \"Processor\"\r\n| where CounterName == \"% Processor Time\"\r\n| summarize Average = avg(CounterValue) by Computer, bin(TimeGenerated, binSize)",
+        "size": 0,
+        "aggregation": 3,
+        "timeContext": {
+          "durationMs": 1800000
+        },
+        "timeContextFromParameter": "TimeRange",
+        "timeBrushParameterName": "BrushedTimeRange",
+        "exportFieldName": "label",
+        "exportParameterName": "SelectedDevice",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{Workspace}"
+        ],
+        "visualization": "linechart",
+        "chartSettings": {
+          "showLegend": true,
+          "ySettings": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "name": "query - 1"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "# Process Utilization for {SelectedDevice}"
+      },
+      "conditionalVisibility": {
+        "parameterName": "SelectedDevice",
+        "comparison": "isNotEqualTo"
+      },
+      "name": "text - 5"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "Perf\r\n| where Computer =~ \"{SelectedDevice}\"\r\n| where ObjectName == \"Process\"\r\n| where CounterName == \"% Processor Time\"\r\n| where InstanceName != \"_Total\" \r\n| where InstanceName !~ \"Idle\"\r\n| make-series output =  avg(CounterValue) default = 0 on TimeGenerated from ago(1h) to now() step 5m by InstanceName\r\n| project InstanceName, series_stats(output), output\r\n| project InstanceName,\r\n            output,\r\n        Minimum = series_stats_output_min,\r\n        Maximum = series_stats_output_max,\r\n        Average = series_stats_output_avg,\r\n        Variance = series_stats_output_variance,\r\n        StandardDeviation = series_stats_output_stdev\r\n| order by Average desc nulls last \r\n\r\n\r\n\r\n",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 1800000
+        },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{Workspace}"
+        ],
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "output",
+              "formatter": 21,
+              "formatOptions": {
+                "min": 0,
+                "max": 100,
+                "palette": "blue"
+              }
+            },
+            {
+              "columnMatch": "Minimum",
+              "formatter": 0,
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "useGrouping": false,
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "Maximum",
+              "formatter": 8,
+              "formatOptions": {
+                "min": 0,
+                "max": 100,
+                "palette": "greenRed"
+              },
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "Average",
+              "formatter": 8,
+              "formatOptions": {
+                "min": 0,
+                "max": 100,
+                "palette": "greenRed"
+              },
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "Variance",
+              "formatter": 1,
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "StandardDeviation",
+              "formatter": 1,
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "maximumSignificantDigits": 2
+                }
+              }
+            }
+          ]
+        }
+      },
+      "name": "query - 6"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let binSize = case(\r\n    {BrushedTimeRange:seconds} > 86400, 1h,\r\n    {BrushedTimeRange:seconds} > 3600, 5m,\r\n    1m\r\n);\r\nPerf\r\n| where Computer =~ \"{SelectedDevice}\"\r\n| where ObjectName == \"Process\"\r\n| where CounterName == \"% Processor Time\"\r\n| where InstanceName != \"_Total\" \r\n| where InstanceName !~ \"Idle\"\r\n| summarize Average = avg(CounterValue) by InstanceName, bin(TimeGenerated, binSize)\r\n",
+        "size": 0,
+        "aggregation": 3,
+        "timeContext": {
+          "durationMs": 0
+        },
+        "timeContextFromParameter": "BrushedTimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "{Workspace}"
+        ],
+        "visualization": "areachart",
+        "chartSettings": {
+          "createOtherGroup": null,
+          "ySettings": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "conditionalVisibility": {
+        "parameterName": "SelectedDevice",
+        "comparison": "isNotEqualTo"
+      },
+      "name": "query - 2"
+    }
+  ],
+  "fallbackResourceIds": [
+    "azure monitor"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
